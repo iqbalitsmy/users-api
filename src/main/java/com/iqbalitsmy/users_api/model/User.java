@@ -20,6 +20,7 @@ public class User {
     @Email(message = "Enter valid email")
     @Column(unique = true, nullable = false, length = 150)
     private String email;
+
     @Column(nullable = false, length = 100)
     private String name;
 
