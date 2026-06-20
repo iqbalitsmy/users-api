@@ -79,7 +79,7 @@ public class JwtService {
         }
     }
 
-    private long getAccessTokenExpiryMs() {
+    public long getAccessTokenExpiryMs() {
         return accessTokenExpiryMs;
     }
 

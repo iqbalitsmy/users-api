@@ -61,7 +61,7 @@ public class AuthDto {
     @AllArgsConstructor
     @NoArgsConstructor
     @Builder
-    public static class RefreshToken{
+    public static class RefreshRequest{
         @NotBlank(message = "Refresh token is required")
         private String refreshToken;
     }
