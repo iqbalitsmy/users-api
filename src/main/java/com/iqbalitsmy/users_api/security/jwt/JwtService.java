@@ -17,7 +17,36 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-
+/**
+ * ================================================================
+ * STEP 6: JWT SERVICE
+ * ================================================================
+ *
+ * WHY a dedicated JwtService?
+ * All JWT logic (create, sign, parse, validate) lives here.
+ * Controllers, filters, and other services call this without
+ * knowing anything about the JWT library (jjwt) internals.
+ * If we swap jjwt for another library, only this class changes.
+ *
+ * ── WHAT IS A JWT? ───────────────────────────────────────────────
+ *
+ *  eyJhbGciOiJIUzI1NiJ9  .  eyJzdWIiOiJ1c2VyQGUuY29tIn0  .  SflKxwRJSMeKKF2QT
+ *  └────── HEADER ──────┘   └──────────── PAYLOAD ──────────┘  └── SIGNATURE ───┘
+ *
+ *  HEADER   → {"alg":"HS256"} — algorithm used to sign
+ *  PAYLOAD  → {"sub":"email","role":"ROLE_USER","provider":"GOOGLE","iat":...,"exp":...}
+ *  SIGNATURE → HMAC_SHA256(base64(header) + "." + base64(payload), secretKey)
+ *
+ * ── WHY WE ISSUE OUR OWN JWT AFTER OAUTH2 LOGIN ──────────────────
+ * After Google/GitHub authenticates the user, Spring Security gives us an
+ * OAuth2 session — but that's browser/session based (not REST-friendly).
+ * We immediately convert it to our own short-lived JWT so that:
+ *  - The API remains fully stateless
+ *  - Mobile clients and React apps can use standard Bearer tokens
+ *  - The frontend doesn't need to know about the OAuth2 internals
+ *  - All downstream API calls use the same token format regardless of
+ *    whether the user signed in locally or via Google/GitHub
+ */
 @Service
 @Slf4j
 public class JwtService {
@@ -32,6 +61,12 @@ public class JwtService {
         return generateAccessToken(new HashMap<>(), userDetails);
     }
 
+    /*
+     * WHY put role and provider in the token claims?
+     * So the server can make authorization decisions (role check) and
+     * the client can display "logged in via Google" — all without a DB call.
+     * The token is self-describing.
+     */
     private String generateAccessToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         extraClaims.put("role", userDetails.getAuthorities().stream()
                 .findFirst()
@@ -83,6 +118,13 @@ public class JwtService {
         return accessTokenExpiryMs;
     }
 
+    /*
+     * WHY decode from Base64 each call?
+     * @Value is injected AFTER object construction.
+     * We can't do `private final SecretKey key = getSigningKey()`
+     * at field declaration time — jwtSecret would be null.
+     * Decoding per-call is safe; or use @PostConstruct to cache it.
+     */
     private SecretKey getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);

@@ -13,6 +13,36 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * ================================================================
+ * STEP 18: USER CONTROLLER — Protected Profile & Admin Endpoints
+ * ================================================================
+ *
+ * ALL endpoints here require a valid JWT in the Authorization header.
+ * The JwtAuthenticationFilter validates the token and sets SecurityContext
+ * before any method here runs.
+ *
+ * ── ENDPOINTS ────────────────────────────────────────────────────
+ *  GET    /api/users/me          → own profile (any authenticated user)
+ *  PUT    /api/users/me          → update own name (any authenticated user)
+ *  GET    /api/users/all         → all users (ADMIN only)
+ *  GET    /api/users/{id}        → any user by ID (ADMIN only)
+ *  DELETE /api/users/{id}        → deactivate user (ADMIN only)
+ *
+ * WHY /me for own profile instead of /api/users/{id}?
+ * The user doesn't need to know their own ID.
+ * They just send their JWT and get their own profile back.
+ * /me is a widely used convention (GitHub API, Spotify API, etc.)
+ *
+ * INTERVIEW TIP — "What is the difference between URL-level and
+ * method-level security?"
+ *  URL-level  → SecurityConfig .authorizeHttpRequests() — coarse-grained,
+ *               good for "all GET requests on /admin/**"
+ *  Method-level → @PreAuthorize on the method — fine-grained,
+ *                 good for "only ADMIN can call THIS method regardless of URL"
+ * Using BOTH is called "defense in depth".
+ */
+
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -21,6 +51,13 @@ public class UserController {
     private final UserService userService;
 
     // ── GET /api/users/me — Own profile ──────────────────────────
+    /*
+     * WHY read email from SecurityContext (not URL param)?
+     * SecurityContext holds the email from the validated JWT.
+     * It's tamper-proof — the JWT filter set it after signature verification.
+     * If we accepted the email as a URL param, a user could request
+     * someone else's profile just by changing the param.
+     */
     @GetMapping("/me")
     public ResponseEntity<AuthDto.UserResponse> getProfile() {
         String email = getCurrentUserEmail();

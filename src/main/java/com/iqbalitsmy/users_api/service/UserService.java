@@ -12,13 +12,43 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * ================================================================
+ * STEP 14: USER SERVICE — Profile Management
+ * ================================================================
+ *
+ * WHY separate from AuthService?
+ * AuthService handles identity (who you are, tokens).
+ * UserService handles data (your profile, admin operations).
+ * Single Responsibility Principle — each class has one reason to change.
+ *
+ * DESIGN NOTE — What operations does this service expose?
+ *  - getProfile(email)           → any authenticated user reads their profile
+ *  - updateProfile(email, req)   → any authenticated user updates their own name
+ *  - getAllUsers()                → ADMIN only — list all users
+ *  - getUserById(id)             → ADMIN only — look up any user
+ *  - deactivateUser(id)          → ADMIN only — soft delete
+ *
+ * WHY not allow users to change their email here?
+ * Email changes require re-verification and provider re-linking.
+ * That's a separate, security-sensitive flow beyond this scope.
+ * For OAuth2 users, email comes from the provider anyway.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
     private final UserRepository userRepository;
 
+
     // ── GET OWN PROFILE ──────────────────────────────────────────
+
+    /*
+     * WHY readOnly = true?
+     * Tells Hibernate not to track dirty state for this transaction.
+     * No entities will be modified — skipping dirty checking is faster.
+     * Always add readOnly=true to methods that only read data.
+     */
     @Transactional(readOnly = true)
     public AuthDto.UserResponse getUser(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(
@@ -36,6 +66,13 @@ public class UserService {
         );
 
         user.setName(request.getName());
+        /*
+         * WHY no explicit save() call?
+         * Inside @Transactional, Hibernate tracks changes to managed entities
+         * (dirty checking). When the transaction commits, it auto-generates
+         * UPDATE SQL for changed fields. This is called "dirty checking."
+         * Calling save() here is redundant but not wrong.
+         */
         return mapToResponse(user);
     }
 
@@ -58,6 +95,14 @@ public class UserService {
     }
 
     // ── ADMIN: DEACTIVATE USER ────────────────────────────────────
+    /*
+     * WHY soft delete (active = false) instead of hard delete?
+     *  - Audit trail: we can see who existed
+     *  - Foreign key safety: related data (tokens, logs) remains intact
+     *  - Recovery: reactivate if deactivated by mistake
+     *  - JWT kill switch: CustomUserDetailsService rejects inactive users,
+     *    so their existing JWT stops working immediately on next request
+     */
     @Transactional
     public void deactivateUser(Long id) {
         User user = userRepository.findById(id).orElseThrow(

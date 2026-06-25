@@ -8,6 +8,17 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
+/**
+ * ================================================================
+ * STEP 3b: REFRESH TOKEN REPOSITORY
+ * ================================================================
+ * <p>
+ * WHY a separate repository for refresh tokens?
+ * Refresh tokens are a security-critical, independently managed entity.
+ * They have their own lifecycle: create on login, find on refresh,
+ * delete on logout. Keeping them in their own repository keeps the
+ * code organized and the User repository focused on user data only.
+ */
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
     Optional<RefreshToken> findByToken(String token);
 

@@ -9,6 +9,29 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+/**
+ * ================================================================
+ * STEP 19: DATA INITIALIZER — Seed Data on Startup
+ * ================================================================
+ *
+ * WHY CommandLineRunner?
+ * Spring Boot calls run() AFTER the complete ApplicationContext is ready:
+ *  - All beans are created
+ *  - DB is connected
+ *  - Hibernate has created the tables (ddl-auto=create-drop)
+ *
+ * This is the right moment to insert seed data.
+ * If we ran before Hibernate created the tables, the INSERT would fail.
+ *
+ * WHY @Component?
+ * Registers this as a Spring bean. CommandLineRunner beans are discovered
+ * automatically and their run() method is called on startup.
+ *
+ * WHY seed an ADMIN user?
+ * H2 is in-memory — it resets on every restart.
+ * Without seeding, there would be no admin account to use immediately.
+ * In production with a persistent DB, seed data runs once (use data.sql or Flyway).
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
